@@ -1,0 +1,68 @@
+id: validate_activities_clean
+namespace: sports_events
+
+tasks:
+  - id: validate_activities_python
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+
+    beforeCommands:
+      - pip install --no-cache-dir boto3 pandas
+
+    script: |
+      import boto3
+      import pandas as pd
+
+      s3 = boto3.client(
+          "s3",
+          aws_access_key_id="AKIAUK6NAZYZSJY7Y4IG",
+          aws_secret_access_key="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",
+          region_name="eu-west-3"
+      )
+
+      # --- Download clean activities file from S3 ---
+      s3.download_file(
+          "sport-data-raw",
+          "curated/activities/FACT_activities.csv",
+          "/tmp/activities_clean.csv"
+      )
+
+      df = pd.read_csv("/tmp/activities_clean.csv")
+
+      # 1. activity_id must be unique
+      assert df["activity_id"].is_unique, "activity_id is not unique!"
+
+      # 2. date_activities must not be in the future
+      if "date_activities" in df.columns:
+          # Convert safely
+          df["date_activities"] = pd.to_datetime(df["date_activities"], errors="coerce")
+
+          # Keep only valid dates
+          valid_dates = df["date_activities"].dropna()
+
+          today = pd.Timestamp.today().normalize()
+
+          if len(valid_dates) > 0:
+              assert not (valid_dates > today).any(), "Some date_activities are in the future!"
+
+      # 3. duree_min must be > 0
+      if "duree_min" in df.columns:
+          df["duree_min"] = pd.to_numeric(df["duree_min"], errors="coerce")
+          assert (df["duree_min"].fillna(-1) > 0).all(), "duree_min must be greater than 0!"
+
+      print("ACTIVITIES validation passed successfully ✔")
+
+triggers:
+  - id: trigger_after_clean_activities
+    type: io.kestra.plugin.core.trigger.Flow
+    preconditions:
+      id: activities_clean_done
+      flows:
+        - namespace: sports_events
+          flowId: curated_fact_activities
+          states:
+            - SUCCESS
+            - WARNING
+    inputs: {}

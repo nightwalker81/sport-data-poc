@@ -1,0 +1,197 @@
+id: load_curated_to_rds
+namespace: sports_events
+
+tasks:
+
+  # 1. Download curated files from S3
+  - id: download_dim
+    type: io.kestra.plugin.aws.s3.Download
+    bucket: sport-data-raw
+    key: curated/dim/DIM_employees.csv
+    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
+    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    region: eu-west-3
+
+  - id: download_activities
+    type: io.kestra.plugin.aws.s3.Download
+    bucket: sport-data-raw
+    key: curated/activities/FACT_activities.csv
+    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
+    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    region: eu-west-3
+
+  - id: download_avantages
+    type: io.kestra.plugin.aws.s3.Download
+    bucket: sport-data-raw
+    key: curated/avantages/FACT_avantages.csv
+    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
+    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    region: eu-west-3
+
+
+  # 2. Truncate tables
+  - id: truncate_tables
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+    beforeCommands:
+      - pip install psycopg2-binary
+    script: |
+      import psycopg2
+
+      conn = psycopg2.connect(
+          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
+          port=5432,
+          dbname="postgres",
+          user="postgres",
+          password="Sport2025!"
+      )
+      cur = conn.cursor()
+      cur.execute("TRUNCATE TABLE sports_events.fact_avantages;")
+      cur.execute("TRUNCATE TABLE sports_events.fact_activities;")
+      cur.execute("TRUNCATE TABLE sports_events.dim_employees;")
+      conn.commit()
+      cur.close()
+      conn.close()
+
+
+  # 3. Load DIM_employees
+  - id: load_dim
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+    beforeCommands:
+      - pip install psycopg2-binary pandas
+    script: |
+      import pandas as pd
+      import psycopg2
+
+      df = pd.read_csv("{{ outputs.download_dim.uri }}")
+
+      conn = psycopg2.connect(
+          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
+          port=5432,
+          dbname="postgres",
+          user="postgres",
+          password="Sport2025!"
+      )
+      cur = conn.cursor()
+
+      for _, row in df.iterrows():
+          cur.execute("""
+              INSERT INTO sports_events.dim_employees (
+                  employee_id, nom, prenom, jours_cp, type_contrat,
+                  departement, salarie_brut, date_naissance,
+                  moyen_deplacement, addresse_domicile, date_embauche,
+                  sport_pratique, distance_domicile_km,
+                  deplacement_valide, eligibilite_prime
+              ) VALUES (%s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s)
+          """, (
+              row.employee_id, row.nom, row.prenom, row.jours_cp, row.type_contrat,
+              row.departement, row.salarie_brut, row.date_naissance,
+              row.moyen_deplacement, row.addresse_domicile, row.date_embauche,
+              row.sport_pratique, row.distance_domicile_km,
+              row.deplacement_valide, row.eligibilite_prime
+          ))
+
+      conn.commit()
+      cur.close()
+      conn.close()
+
+
+  # 4. Load FACT_activities
+  - id: load_act
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+    beforeCommands:
+      - pip install psycopg2-binary pandas
+    script: |
+      import pandas as pd
+      import psycopg2
+
+      df = pd.read_csv("{{ outputs.download_activities.uri }}")
+
+      conn = psycopg2.connect(
+          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
+          port=5432,
+          dbname="postgres",
+          user="postgres",
+          password="Sport2025!"
+      )
+      cur = conn.cursor()
+
+      for _, row in df.iterrows():
+          cur.execute("""
+              INSERT INTO sports_events.fact_activities (
+                  activity_id, employee_id, sport_type,
+                  date_activities, duree_min, commentaires
+              ) VALUES (%s, %s, %s, %s, %s, %s)
+          """, (
+              row.activity_id, row.employee_id, row.sport_type,
+              row.date_activities, row.duree_min, row.commentaires
+          ))
+
+      conn.commit()
+      cur.close()
+      conn.close()
+
+
+  # 5. Load FACT_avantages
+  - id: load_avant
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+    beforeCommands:
+      - pip install psycopg2-binary pandas
+    script: |
+      import pandas as pd
+      import psycopg2
+
+      df = pd.read_csv("{{ outputs.download_avantages.uri }}")
+
+      conn = psycopg2.connect(
+          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
+          port=5432,
+          dbname="postgres",
+          user="postgres",
+          password="Sport2025!"
+      )
+      cur = conn.cursor()
+
+      for _, row in df.iterrows():
+          cur.execute("""
+              INSERT INTO sports_events.fact_avantages (
+                  employee_id, nb_activities, sport_regulier,
+                  eligibilite_jours_be, montant_jours_be,
+                  montant_prime, cout_total
+              ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+          """, (
+              row.employee_id, row.nb_activities, row.sport_regulier,
+              row.eligibilite_jours_be, row.montant_jours_be,
+              row.montant_prime, row.cout_total
+          ))
+
+      conn.commit()
+      cur.close()
+      conn.close()
+
+
+triggers:
+  - id: run_after_validations
+    type: io.kestra.plugin.core.trigger.Flow
+    preconditions:
+      id: both_valid
+      flows:
+        - namespace: sports_events
+          flowId: validate_rh_clean
+          states: [SUCCESS]
+        - namespace: sports_events
+          flowId: validate_activities_clean
+          states: [SUCCESS]

@@ -1,0 +1,123 @@
+id: send_slack_activity
+namespace: sports_events
+
+tasks:
+
+  # 1. Download curated activities
+  - id: download_activities
+    type: io.kestra.plugin.aws.s3.Download
+    bucket: sport-data-raw
+    key: "curated/activities/FACT_activities.csv"
+    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
+    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    region: eu-west-3
+
+  # 2. Download DIM employees
+  - id: download_dim
+    type: io.kestra.plugin.aws.s3.Download
+    bucket: sport-data-raw
+    key: "curated/dim/DIM_employees.csv"
+    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
+    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    region: eu-west-3
+
+  # 3. Join + detect ONLY ONE new activity
+  - id: find_one_new_activity
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+    beforeCommands:
+      - pip install pandas psycopg2-binary
+    script: |
+      import pandas as pd
+      import psycopg2
+      import json
+
+      df_act = pd.read_csv("{{ outputs.download_activities.uri }}")
+      df_dim = pd.read_csv("{{ outputs.download_dim.uri }}")
+
+      df = df_act.merge(df_dim, on="employee_id", how="left")
+
+      conn = psycopg2.connect(
+          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
+          port=5432,
+          dbname="postgres",
+          user="postgres",
+          password="Sport2025!"
+      )
+
+      cur = conn.cursor()
+      cur.execute("SELECT activity_id FROM sports_events.slack_events_sent;")
+      sent = {r[0] for r in cur.fetchall()}
+
+      new_df = df[~df["activity_id"].isin(sent)].head(1)
+      record = new_df.to_dict(orient="records")
+
+      with open("one.json", "w") as f:
+          json.dump(record[0] if record else {}, f)
+
+    outputFiles:
+      - one.json
+
+  # 4. Send Slack message + Log into RDS
+  - id: send_and_log
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+    beforeCommands:
+      - pip install requests psycopg2-binary
+    script: |
+      import json
+      import requests
+      import psycopg2
+
+      with open("{{ outputs.find_one_new_activity.outputFiles['one.json'] }}") as f:
+          row = json.load(f)
+
+      if not row:
+          print("No new activity.")
+          exit(0)
+
+      webhook = "https://hooks.slack.com/services/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"
+
+      message = (
+          f"🎉 *Nouvelle activité sportive détectée !*\n\n"
+          f"🔥 *{row['prenom']} {row['nom']}* a réalisé une superbe séance !\n"
+          f"🏃‍♂️ Activité : *{row['sport_type'].replace('_',' ').title()}*\n"
+          f"⏱ Durée : *{row['duree_min']} minutes*\n\n"
+          f"💪 Continue comme ça, tu es en pleine forme !"
+      )
+
+      requests.post(webhook, json={"text": message})
+
+      conn = psycopg2.connect(
+          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
+          port=5432,
+          dbname="postgres",
+          user="postgres",
+          password="Sport2025!"
+      )
+      cur = conn.cursor()
+
+      cur.execute("""
+          INSERT INTO sports_events.slack_events_sent (
+            activity_id, employee_id, sent_timestamp, message_text
+          )
+          VALUES (%s, %s, NOW(), %s)
+      """, (row["activity_id"], row["employee_id"], message))
+
+      conn.commit()
+      cur.close()
+      conn.close()
+
+triggers:
+  - id: run_after_curated_load
+    type: io.kestra.plugin.core.trigger.Flow
+    preconditions:
+      id: wait_for_load
+      flows:
+        - namespace: sports_events
+          flowId: load_curated_to_rds
+          states: [SUCCESS]

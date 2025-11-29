@@ -1,0 +1,83 @@
+id: clean_and_upload_sport
+namespace: sports_events
+
+inputs:
+  - id: sport_raw_file
+    type: STRING
+
+tasks:
+  
+  # 1. CLEAN SPORT (Python)
+  
+  - id: clean_sport_python
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+    beforeCommands:
+      - pip install --no-cache-dir unidecode
+
+    script: |
+      import pandas as pd
+      import json
+
+      # Load raw file
+      raw_df = pd.read_csv("{{ inputs.sport_raw_file }}")
+      
+      # parse docs
+      def safe_parse(x):
+          if isinstance(x, dict):
+              return x
+          if isinstance(x, str):
+              return json.loads(x)
+          raise ValueError(f"Unexpected type in _airbyte_data: {type(x)}")
+      
+      raw_df["_airbyte_data"] = raw_df["_airbyte_data"].apply(safe_parse)
+      df = pd.json_normalize(raw_df["_airbyte_data"])
+      
+      # Normalize columns
+      df.columns = (
+          df.columns
+            .str.strip()
+            .str.lower()
+            .str.normalize('NFKD')
+            .str.encode('ascii', errors='ignore')
+            .str.decode('utf-8')
+            .str.replace(' ', '_')
+      )
+
+      # SPORT-specific cleaning
+      df = df.drop_duplicates(subset=["employee_id"])
+      
+      # Save output
+      df.to_csv("donnees_SPORT_clean.csv", index=False)
+
+    inputFiles: {}
+    outputFiles:
+      - "donnees_SPORT_clean.csv"
+
+  # 2. UPLOAD CLEAN FILE TO S3
+
+  - id: upload_clean_sport
+    type: io.kestra.plugin.aws.s3.Upload
+    from: "{{ outputs.clean_sport_python.outputFiles['donnees_SPORT_clean.csv'] }}"
+    bucket: sport-data-raw
+    key: "clean/sport/donnees_SPORT_clean.csv"
+    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
+    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    region: "eu-west-3"
+
+
+# TRIGGER — start after Flow 1 (extract_sport_raw_from_s3)
+
+triggers:
+  - id: trigger_after_extract_sport
+    type: io.kestra.plugin.core.trigger.Flow
+    preconditions:
+      id: sport_extract_done
+      flows:
+        - namespace: sports_events
+          flowId: extract_sport_raw_from_s3
+          states: [SUCCESS]
+    inputs:
+      sport_raw_file: "{{ outputs.download_sport_raw.uri }}"

@@ -1,0 +1,146 @@
+id: curated_fact_avantages
+namespace: sports_events
+
+tasks:
+  - id: compute_fact_avantages
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+
+    beforeCommands:
+      - pip install --no-cache-dir pandas boto3
+
+    script: |
+      import boto3
+      import pandas as pd
+
+      # --------------------------------------
+      # S3 CONFIG
+      # --------------------------------------
+      BUCKET = "sport-data-raw"
+      REAL_ACT_KEY = "curated/activities/FACT_activities.csv"     
+      DIM_KEY = "curated/dim/DIM_employees.csv"
+      OUT_KEY = "curated/avantages/FACT_avantages.csv"
+
+      # S3 client
+      s3 = boto3.client(
+          "s3",
+          aws_access_key_id="AKIAUK6NAZYZSJY7Y4IG",
+          aws_secret_access_key="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",
+          region_name="eu-west-3"
+      )
+
+      # --------------------------------------
+      # LOAD REAL ACTIVITIES + DIM
+      # --------------------------------------
+      s3.download_file(BUCKET, REAL_ACT_KEY, "/tmp/real_activities.csv")
+      s3.download_file(BUCKET, DIM_KEY, "/tmp/dim.csv")
+
+      df_act = pd.read_csv("/tmp/real_activities.csv")
+      df_dim = pd.read_csv("/tmp/dim.csv")
+
+      # Convert dates
+      df_act["date_activities"] = pd.to_datetime(df_act["date_activities"])
+
+      # --------------------------------------
+      # ANNUAL AGGREGATION
+      # --------------------------------------
+      annual_counts = (
+          df_act.groupby("employee_id")
+                .size()
+                .reset_index(name="nb_activities")
+      )
+
+      # Ensure all employees appear (even 0 activities)
+      annual_counts = df_dim[["employee_id"]].merge(
+          annual_counts,
+          on="employee_id",
+          how="left"
+      )
+
+      annual_counts["nb_activities"] = (
+          annual_counts["nb_activities"]
+          .fillna(0)
+          .astype(int)
+      )
+
+      # --------------------------------------
+      # sport_regulier (>= 25 activities)
+      # --------------------------------------
+      annual_counts["sport_regulier"] = annual_counts["nb_activities"] >= 25
+
+      # --------------------------------------
+      # eligibilite_jours_be
+      # --------------------------------------
+      annual_counts["eligibilite_jours_be"] = annual_counts["sport_regulier"]
+
+      # --------------------------------------
+      # JOIN SALARY + PRIME ELIGIBILITY
+      # --------------------------------------
+      annual_counts = annual_counts.merge(
+          df_dim[["employee_id", "salarie_brut", "eligibilite_prime"]],
+          on="employee_id",
+          how="left"
+      )
+
+      # --------------------------------------
+      # COST MODEL 
+      # --------------------------------------
+      annual_counts["daily_cost"] = annual_counts["salarie_brut"] / 220
+
+      # montant_jours_be
+      annual_counts["montant_jours_be"] = annual_counts.apply(
+          lambda r: r["daily_cost"] * 5 if r["eligibilite_jours_be"] else 0,
+          axis=1
+      )
+
+      # montant_prime (5% salary)
+      annual_counts["montant_prime"] = annual_counts.apply(
+          lambda r: r["salarie_brut"] * 0.05 if r["eligibilite_prime"] else 0,
+          axis=1
+      )
+
+      # cout_total
+      annual_counts["cout_total"] = (
+          annual_counts["montant_prime"] +
+          annual_counts["montant_jours_be"]
+      )
+
+      # --------------------------------------
+      # SELECT FINAL COLUMNS
+      # --------------------------------------
+      fact = annual_counts[[
+          "employee_id",
+          "nb_activities",
+          "sport_regulier",
+          "eligibilite_jours_be",
+          "montant_jours_be",
+          "montant_prime",
+          "cout_total"
+      ]]
+
+      # SAVE TO S3
+      out_file = "/tmp/FACT_avantages.csv"
+      fact.to_csv(out_file, index=False)
+
+      s3.upload_file(out_file, BUCKET, OUT_KEY)
+
+      print("FACT_avantages created successfully ✔")
+
+# --------------------------------------
+# TRIGGER: after DIM and REAL SPORT CLEAN succeed
+# --------------------------------------
+triggers:
+  - id: after_dim_and_sport_cleaned
+    type: io.kestra.plugin.core.trigger.Flow
+    preconditions:
+      id: both_ready
+      flows:
+        - namespace: sports_events
+          flowId: validate_rh_clean
+          states: [SUCCESS]
+        - namespace: sports_events
+          flowId: validate_activities_clean
+          states: [SUCCESS]
+    inputs: {}
