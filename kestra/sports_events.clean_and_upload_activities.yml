@@ -73,8 +73,8 @@ tasks:
     from: "{{ outputs.clean_activities_python.outputFiles['activities_clean.csv'] }}"
     bucket: sport-data-raw
     key: "clean/activities/activities_clean.csv"
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: "eu-west-3"
 
 
