@@ -6,7 +6,7 @@ tasks:
     type: io.kestra.plugin.aws.s3.Download
     bucket: sport-data-raw
     key: "raw/github/donnnee_RH/2025_11_25_1764050250735_0.csv"
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: "eu-west-3"
 
