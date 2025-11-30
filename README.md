@@ -60,7 +60,7 @@ L’architecture repose sur un pipeline **moderne** et **modulaire**, composé d
 
 - Webhook Slack : messages dynamiques après détection d’activités
 
-> 📁 Des schémas détaillés sont disponibles dans le dossier [`/docs`](docs/).
+> 📁 Des schémas détaillés sont disponibles dans le dossier [`/docs`](docs/sports_events.architcture_globale.png).
 
 ---
 
