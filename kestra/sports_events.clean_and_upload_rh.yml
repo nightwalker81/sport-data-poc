@@ -93,8 +93,8 @@ tasks:
     from: "{{ outputs.clean_rh_python.outputFiles['donnee_RH_clean.csv'] }}"
     bucket: sport-data-raw
     key: "clean/hr/donnee_RH_clean.csv"
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: "eu-west-3"
 
 
