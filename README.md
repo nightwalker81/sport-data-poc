@@ -158,7 +158,7 @@ Le **modèle analytique** final contient :
 - `dim_employees.employee_id` ⟶ `fact_activities.employee_id`
 - `dim_employees.employee_id` ⟶ `fact_avantages.employee_id`
 
-📌 Schéma complet disponible dans [`/docs/schema_relationnel.png`](docs/sschema_relationel__sports_events.png)
+📌 Schéma complet disponible dans [`/docs/schema_relationnel.png`](docs/schema_relationel__sports_events.png)
 
 ---
 
