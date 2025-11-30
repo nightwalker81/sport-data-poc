@@ -20,13 +20,13 @@ tasks:
       # --------------------------------------
       # CONFIG
       # --------------------------------------
-      GOOGLE_API_KEY = "AIzaSyDC6HBPkS0N0_mG_F3b_DbuY_CabKxFehc"
+      GOOGLE_API_KEY = "redacted"
       COMPANY_ADDR = "1362 Avenue des Platanes, 34970 Lattes, France"
 
       s3 = boto3.client(
           "s3",
-          aws_access_key_id="AKIAUK6NAZYZSJY7Y4IG",
-          aws_secret_access_key="AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS",
+          aws_access_key_id="redacted",
+          aws_secret_access_key="redacted",
           region_name="eu-west-3"
       )
 
