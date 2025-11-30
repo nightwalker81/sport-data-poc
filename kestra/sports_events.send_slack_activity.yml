@@ -8,8 +8,8 @@ tasks:
     type: io.kestra.plugin.aws.s3.Download
     bucket: sport-data-raw
     key: "curated/activities/FACT_activities.csv"
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: eu-west-3
 
   # 2. Download DIM employees
@@ -17,8 +17,8 @@ tasks:
     type: io.kestra.plugin.aws.s3.Download
     bucket: sport-data-raw
     key: "curated/dim/DIM_employees.csv"
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: eu-west-3
 
   # 3. Join + detect ONLY ONE new activity
@@ -40,11 +40,11 @@ tasks:
       df = df_act.merge(df_dim, on="employee_id", how="left")
 
       conn = psycopg2.connect(
-          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
-          port=5432,
-          dbname="postgres",
-          user="postgres",
-          password="Sport2025!"
+          host="redacted",
+          port=redacted,
+          dbname="redacted",
+          user="redacted",
+          password="redacted"
       )
 
       cur = conn.cursor()
@@ -80,7 +80,7 @@ tasks:
           print("No new activity.")
           exit(0)
 
-      webhook = "https://hooks.slack.com/services/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"
+      webhook = "redacted"
 
       message = (
           f"🎉 *Nouvelle activité sportive détectée !*\n\n"
@@ -93,11 +93,11 @@ tasks:
       requests.post(webhook, json={"text": message})
 
       conn = psycopg2.connect(
-          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
-          port=5432,
-          dbname="postgres",
-          user="postgres",
-          password="Sport2025!"
+          host="redacted",
+          port=redacted,
+          dbname="redacted",
+          user="redacted",
+          password="redacted"
       )
       cur = conn.cursor()
 
