@@ -26,8 +26,8 @@ tasks:
       # S3 client
       s3 = boto3.client(
           "s3",
-          aws_access_key_id="AKIAUK6NAZYZSJY7Y4IG",
-          aws_secret_access_key="AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS",
+          aws_access_key_id="redacted",
+          aws_secret_access_key="redacted",
           region_name="eu-west-3"
       )
 
