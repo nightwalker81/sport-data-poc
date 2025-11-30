@@ -6,6 +6,6 @@ tasks:
     type: io.kestra.plugin.aws.s3.Download
     bucket: sport-data-raw
     key: "raw/activities/FastAPI_Sports_Events/2025_11_24_1763981979929_0.jsonl"
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: "eu-west-3"
