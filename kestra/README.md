@@ -17,7 +17,6 @@ L’orchestration est exécutée **localement via Docker Compose**.
   - [Zone Curated](#zone-curated)
   - [Chargement](#chargement)
   - [Notification](#notification)
-- [Ordre d'exécution du pipeline](#ordre-dexécution-du-pipeline)
 - [Exécution manuelle d'un workflow](#exécution-manuelle-dun-workflow)
 - [Résumé](#résumé)
 
