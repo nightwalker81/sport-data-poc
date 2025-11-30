@@ -2,8 +2,7 @@
 
 Ce projet contient les **14 workflows Kestra** utilisés pour orchestrer l’ensemble du pipeline de traitement de données dans le cadre du **POC Sport Data Solution**.
 
-L’orchestration est exécutée **localement via Docker Compose**.  
-⚠️ Les credentials sont **hardcodés volontairement** dans les fichiers de flow, car ce projet est un **POC** hébergé dans un **repository privé**.
+L’orchestration est exécutée **localement via Docker Compose**. 
 
 ---
 
@@ -71,14 +70,12 @@ docker compose down
 
 ## 🔐 Gestion des credentials (POC)
 
-Les identifiants sont **hardcodés dans les fichiers de workflow** pour des raisons de simplicité et de démonstration :
+Les identifiants sont **enlevés dans les fichiers de workflow** pour des raisons de securité:
 
 - Credentials AWS (S3)
 - Identifiants PostgreSQL (RDS)
 - Webhook Slack
 - Clé API Google Maps (si utilisée)
-
-> ⚠️ **Important :** Cette méthode n’est **pas adaptée à la production**, mais reste acceptable pour un usage local en environnement sécurisé (POC + repository privé).
 
 ---
 
@@ -170,5 +167,5 @@ Ce projet contient :
 - ✅ Une **orchestration complète** du pipeline de données
 - ✅ L’intégration complète **S3 → Kestra → PostgreSQL (RDS) → Slack**
 - ✅ Une stack exécutable en local via **Docker Compose**
-- ✅ Des identifiants hardcodés (temporairement) pour usage en **POC privé**
+
 
