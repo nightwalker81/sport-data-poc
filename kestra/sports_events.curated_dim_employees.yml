@@ -1,0 +1,146 @@
+id: curated_dim_employees
+namespace: sports_events
+
+tasks:
+  - id: curated_dim_python
+    type: io.kestra.plugin.scripts.python.Script
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      image: ghcr.io/kestra-io/pydata:latest
+
+    beforeCommands:
+      - pip install --no-cache-dir requests pandas boto3
+
+    script: |
+      import requests
+      import pandas as pd
+      import boto3
+      import json
+
+      # --------------------------------------
+      # CONFIG
+      # --------------------------------------
+      GOOGLE_API_KEY = "redacted"
+      COMPANY_ADDR = "1362 Avenue des Platanes, 34970 Lattes, France"
+
+      s3 = boto3.client(
+          "s3",
+          aws_access_key_id="redacted",
+          aws_secret_access_key="redacted",
+          region_name="eu-west-3"
+      )
+
+      # LOAD CLEAN RH (primary HR data)
+      
+      s3.download_file(
+          "sport-data-raw",
+          "clean/hr/donnee_RH_clean.csv",
+          "/tmp/rh_clean.csv"
+      )
+      df = pd.read_csv("/tmp/rh_clean.csv")
+
+      
+      # LOAD SPORTS PREFERENCE (RH declared sport)
+   
+      s3.download_file(
+          "sport-data-raw",
+          "clean/sport/donnees_SPORT_clean.csv",
+          "/tmp/sport_pref.csv"
+      )
+      df_pref = pd.read_csv("/tmp/sport_pref.csv")
+
+      # rename to avoid conflict 
+      df_pref = df_pref.rename(columns={"sport_type": "sport_pratique"})
+
+      # merge with RH main dataframe
+      df = df.merge(df_pref, on="employee_id", how="left")
+
+      
+      # GOOGLE ROUTES API (distance)
+      
+      def compute_distance_km(home_addr: str):
+          if pd.isna(home_addr) or home_addr.strip() == "":
+              return None
+
+          origin = f"{home_addr}, France"
+
+          url = "redacted"
+          headers = {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": GOOGLE_API_KEY,
+              "X-Goog-FieldMask": "routes.distanceMeters"
+          }
+          payload = {
+              "origin": {"address": origin},
+              "destination": {"address": COMPANY_ADDR},
+              "travelMode": "DRIVE"
+          }
+
+          try:
+              response = requests.post(url, headers=headers, data=json.dumps(payload))
+              data = response.json()
+
+              if "routes" not in data or len(data["routes"]) == 0:
+                  return None
+
+              meters = data["routes"][0].get("distanceMeters")
+              if meters is None:
+                  return None
+
+              return meters / 1000
+          except Exception:
+              return None
+
+      df["distance_domicile_km"] = df["addresse_domicile"].apply(compute_distance_km)
+
+      
+      # VALIDATE TRANSPORT DECLARATION
+      
+      def validate_transport(row):
+          mode = row["moyen_deplacement"]
+          dist = row["distance_domicile_km"]
+
+          if dist is None:
+              return False
+
+          if mode == "marche_running" and dist <= 15:
+              return True
+
+          if mode == "velo_trottinette_autres" and dist <= 25:
+              return True
+
+          return False
+
+      df["deplacement_valide"] = df.apply(validate_transport, axis=1)
+      df["eligibilite_prime"] = df["deplacement_valide"]
+
+      
+      # SAVE FIRST-PASS DIM TO S3
+      
+      output_path = "/tmp/DIM_employees.csv"
+      df.to_csv(output_path, index=False)
+
+      s3.upload_file(
+          output_path,
+          "sport-data-raw",
+          "curated/dim/DIM_employees.csv"
+      )
+
+      print("DIM_employees completed successfully ✔")
+
+
+# TRIGGER AFTER validate_rh_clean AND validate_sport_clean
+
+triggers:
+  - id: after_rh_and_sport_cleaned
+    type: io.kestra.plugin.core.trigger.Flow
+    preconditions:
+      id: both_clean
+      flows:
+        - namespace: sports_events
+          flowId: clean_and_upload_rh
+          states: [SUCCESS]
+        - namespace: sports_events
+          flowId: clean_and_upload_sport
+          states: [SUCCESS]
+    inputs: {}
