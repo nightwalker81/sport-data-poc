@@ -17,7 +17,7 @@ tasks:
     script: |
       import pandas as pd
       import boto3
-      s3 = boto3.client("s3",aws_access_key_id="AKIAUK6NAZYZSJY7Y4IG",aws_secret_access_key="AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS",region_name="eu-west-3")
+      s3 = boto3.client("s3",aws_access_key_id="redacted",aws_secret_access_key="redacted",region_name="eu-west-3")
 
       s3.download_file("sport-data-raw", "curated/dim/DIM_employees.csv", "/tmp/rh.csv")
     
