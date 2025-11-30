@@ -8,24 +8,24 @@ tasks:
     type: io.kestra.plugin.aws.s3.Download
     bucket: sport-data-raw
     key: curated/dim/DIM_employees.csv
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: eu-west-3
 
   - id: download_activities
     type: io.kestra.plugin.aws.s3.Download
     bucket: sport-data-raw
     key: curated/activities/FACT_activities.csv
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: eu-west-3
 
   - id: download_avantages
     type: io.kestra.plugin.aws.s3.Download
     bucket: sport-data-raw
     key: curated/avantages/FACT_avantages.csv
-    accessKeyId: "AKIAUK6NAZYZSJY7Y4IG"
-    secretKeyId: "AyZ2XtiJAR0HiiNSmAptPOyX0THVGHNpi5sgiZUS"
+    accessKeyId: "redacted"
+    secretKeyId: "redacted"
     region: eu-west-3
 
 
@@ -41,11 +41,11 @@ tasks:
       import psycopg2
 
       conn = psycopg2.connect(
-          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
+          host="redacted",
           port=5432,
-          dbname="postgres",
-          user="postgres",
-          password="Sport2025!"
+          dbname="redacted",
+          user="redacted",
+          password="redacted!"
       )
       cur = conn.cursor()
       cur.execute("TRUNCATE TABLE sports_events.fact_avantages;")
@@ -71,11 +71,11 @@ tasks:
       df = pd.read_csv("{{ outputs.download_dim.uri }}")
 
       conn = psycopg2.connect(
-          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
-          port=5432,
-          dbname="postgres",
-          user="postgres",
-          password="Sport2025!"
+          host="redacted",
+          port=redacted,
+          dbname="redacted",
+          user="redacted",
+          password="redacted"
       )
       cur = conn.cursor()
 
@@ -118,11 +118,11 @@ tasks:
       df = pd.read_csv("{{ outputs.download_activities.uri }}")
 
       conn = psycopg2.connect(
-          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
-          port=5432,
-          dbname="postgres",
-          user="postgres",
-          password="Sport2025!"
+          host="redacted",
+          port=redacted,
+          dbname="redacted",
+          user="redacted",
+          password="redacted"
       )
       cur = conn.cursor()
 
@@ -157,11 +157,11 @@ tasks:
       df = pd.read_csv("{{ outputs.download_avantages.uri }}")
 
       conn = psycopg2.connect(
-          host="sports-events-db.cj6ieo0g8kib.eu-west-3.rds.amazonaws.com",
-          port=5432,
-          dbname="postgres",
-          user="postgres",
-          password="Sport2025!"
+          host="redacted",
+          port=redacted,
+          dbname="redacted",
+          user="redacted",
+          password="redacted"
       )
       cur = conn.cursor()
 
