@@ -203,14 +203,12 @@ Lorsqu’une nouvelle activité est détectée :
 
 ## 🔐 8. Gestion des Credentials (POC)
 
-Dans ce **POC strictement local et privé**, les credentials sont **hardcodés** pour faciliter la soutenance :
+Dans ce **POC strictement local et privé**, les credentials sont **enlevés** pour s'assurer la sécutité :
 
 - AWS S3
 - PostgreSQL RDS
 - Slack Webhook
-
-> ⚠️ **À ne pas reproduire en production**  
-> ✅ Acceptable dans un contexte de démonstration et d’évaluation
+- Google API
 
 ---
 
@@ -256,7 +254,7 @@ Ce POC démontre la capacité de **Sport-Events** à :
 🚀 **Perspectives :**
 
 - Industrialisation (CI/CD, sécurité, scalabilité)
-- Connexion avec une API réelle (ex : Strava)
+- Connexion avec une API réelle (ex : FAST API)
 - Analyse avancée (ML, scoring, segmentation)
 
 ---
